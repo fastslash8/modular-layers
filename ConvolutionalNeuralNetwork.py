@@ -47,11 +47,15 @@ class ConvolutionalLayer():
                 for i in range(o_height):
                     for j in range(o_width):
                         #section = input section (x_ij)
-                        section = np.zeros((self.fsize,self.fsize))
+                        #section = np.zeros((self.fsize,self.fsize))
+
+                        section = inputArr[i*self.stride:i*self.stride + self.fsize:1, j*self.stride:j*self.stride + self.fsize:1, layer]
+                        """
                         for m in range(self.fsize):
                             for n in range(self.fsize):
                                 section[m][n] = inputArr[m + i*self.stride][n + j*self.stride][layer]
-
+                        """
+                        #print(np.shape(inputArr), np.shape(section), np.shape(self.filters[f][layer]))
                         output[f][i][j] += np.sum(np.multiply(section, self.filters[f][layer])) #use the proper filter for each one
                     #print(i)
                     #sys.stdout.flush()
@@ -63,6 +67,12 @@ class ConvolutionalLayer():
 
 
     def backward(self, gradient):
+        for f in range(self.filter_num):
+            for layer in range(self.depth):
+                
+
+
+
         self.weights -= np.outer(gradient, self.cache.T) * LEARN_RATE / np.sqrt(self.mem_weights + 1e-8)
 
         return np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1]
