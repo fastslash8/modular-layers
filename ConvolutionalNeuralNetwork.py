@@ -36,16 +36,16 @@ class ConvolutionalLayer():
     def forward(self, inputArr):
         #filters = list of all filters
         #outputs = list(?) of outputs
-        o_width = int((self.width - self.fsize)/self.stride) + 1
-        o_height = int((self.height - self.fsize)/self.stride) + 1
+        self.o_width = int((self.width - self.fsize)/self.stride) + 1
+        self.o_height = int((self.height - self.fsize)/self.stride) + 1
 
 
         output = np.zeros((self.filter_num, o_height, o_width))
 
         for f in range(self.filter_num):
             for layer in range(self.depth):
-                for i in range(o_height):
-                    for j in range(o_width):
+                for i in range(self.o_height):
+                    for j in range(self.o_width):
                         #section = input section (x_ij)
                         #section = np.zeros((self.fsize,self.fsize))
 
@@ -56,7 +56,7 @@ class ConvolutionalLayer():
                                 section[m][n] = inputArr[m + i*self.stride][n + j*self.stride][layer]
                         """
                         #print(np.shape(inputArr), np.shape(section), np.shape(self.filters[f][layer]))
-                        output[f][i][j] += np.sum(np.multiply(section, self.filters[f][layer])) #use the proper filter for each one
+                        output[f][i][j] += np.sum(np.multiply(section, self.filters[f][layer])) + bias[f] #use the proper filter for each one
                     #print(i)
                     #sys.stdout.flush()
 
@@ -67,15 +67,29 @@ class ConvolutionalLayer():
 
 
     def backward(self, gradient):
+        dzdx = np.zeros((self.o_height, self.o_width, self.depth))
+
         for f in range(self.filter_num):
             for layer in range(self.depth):
-                
+                dzdf = np.zeros((self.fsize, self.fsize))
+                #dzdx = np.zeros((self.o_height, self.o_width))
+
+                for i in range(self.fsize):
+                    for j in range(self.fsize):
+                        #iteration TODO
+                        for m in range(self.o_height):
+                            for n in range(self.o_width):
+                                dzdf[i][j] += self.cache[i + m*self.stride][j + n*self.stride][layer] * gradient[m*self.stride][n*self.stride][f]
+                                self.bias[f] += gradient[m*self.stride][n*self.stride][f]
+
+                                dzdx[m][n][layer] += self.filters[f][layer][i][j] * gradient[m*self.stride - i][n*self.stride - j][f]
+
+                self.filters[f][layer] += dzdw
 
 
 
-        self.weights -= np.outer(gradient, self.cache.T) * LEARN_RATE / np.sqrt(self.mem_weights + 1e-8)
 
-        return np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1]
+        return dzdx
 
 test_layer = ConvolutionalLayer(820,500,3,2,10,1,0);
 img = misc.imread("boi.png")
