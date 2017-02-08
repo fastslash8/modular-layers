@@ -107,16 +107,24 @@ class MaxPoolingLayer():
 
         pooled_arr = np.zeros((len(inputArr), new_height, new_width))
 
+        max_positions = [[np.zeros(2) for x in range(new_width + np.sign(overhang_w))] for y in range(new_height + np.sign(overhang_h))]
+
         for layer in range(len(inputArr)):
             for i in range(new_height + np.sign(overhang_h)):
                 for j in range(new_width + np.sign(overhang_w)):
                     max_value = 0
+                    max_x = 0
+                    max_y = 0
                     for m in range(chunk_height if (i < new_height) else overhang_h):
                         for n in range(chunk_width if (j < new_width) else overhang_w):
                             if(inputArr[layer][i*chunk_height + m][j*chunk_width + n] > max_value):
                                 max_value = inputArr[layer][i*chunk_height + m][j*chunk_width + n]
-
+                                max_x = j*chunk_width + n
+                                max_y = i*chunk_height + m
                     pooled_arr[layer][i][j] = max_value
+
+    def backward(self, gradient):
+
 
 
 test_layer = ConvolutionalLayer(820,500,3,2,10,1,0);
