@@ -4,6 +4,8 @@ import numpy.random as random
 import matplotlib.pyplot as plt
 import sys
 
+import mlayers as ml
+
 #import mnist.py
 
 from scipy import misc
@@ -137,6 +139,55 @@ class MaxPoolingLayer():
                     dCdP[layer][self.max_positions[i][j][0]][self.max_positions[i][j][1]] = gradient[layer][i][j]
 
         return dCdP
+
+
+class ReLULayer():
+
+    def __init__(self):
+        print("kek")
+        #self.cache
+
+    def forward(self, inputArr):
+        self.cache = np.maximum(inputArr, 0)
+        return self.cache
+
+    def backward(self, gradient):
+        return np.multiply(np.sign(self.cache), gradient
+
+
+class FullyConnectedLayer():
+    cache = np.array([0])  #Used to store the values for back-propagation
+    weights = np.array([0])  #Weights for each connection between neurons represented as a matrix
+
+    def __init__(self, input_height, input_width, new_dim):
+        #rows = hidden layer size
+        #cols = number of unique classifications - size of input vector
+
+        self.old_height = input_height
+        self.old_width = input_width
+
+        self.rows = input_height * input_width
+        self.cols = new_dim
+
+        self.cache = np.zeros((rows,1))
+        self.weights = np.random.uniform(-np.sqrt(1./cols), np.sqrt(1./cols), (rows, cols+1))
+
+        self.mem_weights = np.zeros(self.weights.shape)
+    def forward(self, inputArr):
+        flatArr = np.ndarray.flatten(inputArr)
+
+
+        self.cache = np.resize(np.append(flatArr, [1]), (len(flatArr) + 1, 1))
+        self.mem_weights = 0.9*self.mem_weights + 0.1*(self.weights ** 2) #incrementing for adagrad
+
+        return np.dot(self.weights, self.cache)
+
+    def backward(self, gradient):
+        self.weights -= np.outer(gradient, self.cache.T) * LEARN_RATE / np.sqrt(self.mem_weights + 1e-8)
+
+        return np.reshape(np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1], (self.old_height, self.old_width))
+
+
 
 
 test_layer = ConvolutionalLayer(820,500,3,2,10,1,0);
