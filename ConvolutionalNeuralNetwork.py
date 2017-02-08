@@ -10,6 +10,8 @@ import mlayers as ml
 
 from scipy import misc
 
+EPOCHS = 10
+
 class ConvolutionalLayer():
     cache = np.array([0])  #Used to store the values for back-propagation
     weights = np.array([0])  #Weights for each connection between neurons represented as a matrix
@@ -81,10 +83,11 @@ class ConvolutionalLayer():
                         #iteration TODO
                         for m in range(self.o_height):
                             for n in range(self.o_width):
-                                dCdf[i][j] += self.cache[i + m*self.stride][j + n*self.stride][layer] * gradient[m*self.stride][n*self.stride][f]
-                                self.bias[f] += gradient[m*self.stride][n*self.stride][f]
+                                dCdf[i][j] += self.cache[i + m*self.stride][j + n*self.stride][layer] * gradient[m][n][f]
+                                self.bias[f] += gradient[m][n][f]
 
-                                dCdx[m][n][layer] += self.filters[f][layer][i][j] * gradient[m*self.stride - i][n*self.stride - j][f]
+                                #Rotating filter for convolution
+                                dCdx[m][n][layer] += self.filters[f][layer][-i][-j] * gradient[m][n][f]
 
                 self.filters[f][layer] += dzdf
 
@@ -152,7 +155,7 @@ class ReLULayer():
         return self.cache
 
     def backward(self, gradient):
-        return np.multiply(np.sign(self.cache), gradient
+        return np.multiply(np.sign(self.cache), gradient)
 
 
 class FullyConnectedLayer():
@@ -187,9 +190,29 @@ class FullyConnectedLayer():
 
         return np.reshape(np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1], (self.old_height, self.old_width))
 
+possible_classifications = 2
+
+layers = [ConvolutionalLayer(16,16,1,2,3,2,0), ReLULayer(), FullyConnectedLayer(7,7,9), ml.InnerLayer(10,possible_classifications), ml.SoftmaxLayer()]
+
+
+for(i in range(EPOCHS)):
+    #psuedocode
+    temp = data
+
+    for(layer in layers):
+        temp = layer.forward(temp)
+
+    loss = expected - temp
+    temp = expected
+
+    for(layer in layer.reversed())
+        temp = layer.backward(temp)
 
 
 
+
+
+"""
 test_layer = ConvolutionalLayer(820,500,3,2,10,1,0);
 img = misc.imread("boi.png")
 
@@ -199,3 +222,4 @@ print(new_imgs)
 
 plt.imshow(new_imgs[0], interpolation='nearest')
 plt.show()
+"""
