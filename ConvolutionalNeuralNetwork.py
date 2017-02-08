@@ -67,11 +67,11 @@ class ConvolutionalLayer():
 
 
     def backward(self, gradient):
-        dzdx = np.zeros((self.o_height, self.o_width, self.depth))
+        dCdx = np.zeros((self.o_height, self.o_width, self.depth))
 
         for f in range(self.filter_num):
             for layer in range(self.depth):
-                dzdf = np.zeros((self.fsize, self.fsize))
+                dCdf = np.zeros((self.fsize, self.fsize))
                 #dzdx = np.zeros((self.o_height, self.o_width))
 
                 for i in range(self.fsize):
@@ -79,17 +79,17 @@ class ConvolutionalLayer():
                         #iteration TODO
                         for m in range(self.o_height):
                             for n in range(self.o_width):
-                                dzdf[i][j] += self.cache[i + m*self.stride][j + n*self.stride][layer] * gradient[m*self.stride][n*self.stride][f]
+                                dCdf[i][j] += self.cache[i + m*self.stride][j + n*self.stride][layer] * gradient[m*self.stride][n*self.stride][f]
                                 self.bias[f] += gradient[m*self.stride][n*self.stride][f]
 
-                                dzdx[m][n][layer] += self.filters[f][layer][i][j] * gradient[m*self.stride - i][n*self.stride - j][f]
+                                dCdx[m][n][layer] += self.filters[f][layer][i][j] * gradient[m*self.stride - i][n*self.stride - j][f]
 
-                self.filters[f][layer] += dzdw
-
-
+                self.filters[f][layer] += dzdf
 
 
-        return dzdx
+
+
+        return np.dot(dCdx, gradient)
 
 
 class MaxPoolingLayer():
@@ -100,16 +100,18 @@ class MaxPoolingLayer():
         self.averageValues = averageValues
 
     def forward(self, inputArr):
-        new_height = int(len(inputArr) / chunk_height)
-        new_width = int(len(inputArr) / chunk_width)
-        overhang_h = len(inputArr) % chunk_height
-        overhang_w = len(inputArr) % chunk_width
+        self.new_height = int(len(inputArr) / chunk_height)
+        self.new_width = int(len(inputArr) / chunk_width)
+        self.overhang_h = len(inputArr) % chunk_height
+        self.overhang_w = len(inputArr) % chunk_width
 
-        pooled_arr = np.zeros((len(inputArr), new_height, new_width))
+        self.depth = len(inputArr)
 
-        max_positions = [[np.zeros(2) for x in range(new_width + np.sign(overhang_w))] for y in range(new_height + np.sign(overhang_h))]
+        pooled_arr = np.zeros((self.depth, new_height + np.sign(overhang_h), new_width + np.sign(overhang_w)))
 
-        for layer in range(len(inputArr)):
+        self.max_positions = [[np.zeros(2) for x in range(new_width + np.sign(overhang_w))] for y in range(new_height + np.sign(overhang_h))]
+
+        for layer in range(self.depth):
             for i in range(new_height + np.sign(overhang_h)):
                 for j in range(new_width + np.sign(overhang_w)):
                     max_value = 0
@@ -122,9 +124,19 @@ class MaxPoolingLayer():
                                 max_x = j*chunk_width + n
                                 max_y = i*chunk_height + m
                     pooled_arr[layer][i][j] = max_value
+                    max_positions[i][j] = np.array([max_x, max_y])
+        return pooled_arr
 
     def backward(self, gradient):
+        dCdP = np.zeros((self.depth, self.new_height * self.chunk_height + self.overhang_h, self.new_width * self.chunk_width + self.overhang_w))
 
+        for layer in range(self.depth):
+            for i in range(self.new_height):
+                for j in range(self.new_width):
+                    #Searching for max value position from input to distribute the error to
+                    dCdP[layer][self.max_positions[i][j][0]][self.max_positions[i][j][1]] = gradient[layer][i][j]
+
+        return dCdP
 
 
 test_layer = ConvolutionalLayer(820,500,3,2,10,1,0);
