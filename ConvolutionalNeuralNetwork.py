@@ -45,7 +45,7 @@ class ConvolutionalLayer():
         self.o_height = int((self.height - self.fsize)/self.stride) + 1
 
 
-        output = np.zeros((self.filter_num, o_height, o_width))
+        output = np.zeros((self.filter_num, self.o_height, self.o_width))
 
         for f in range(self.filter_num):
             for layer in range(self.depth):
@@ -61,7 +61,7 @@ class ConvolutionalLayer():
                                 section[m][n] = inputArr[m + i*self.stride][n + j*self.stride][layer]
                         """
                         #print(np.shape(inputArr), np.shape(section), np.shape(self.filters[f][layer]))
-                        output[f][i][j] += np.sum(np.multiply(section, self.filters[f][layer])) + bias[f] #use the proper filter for each one
+                        output[f][i][j] += np.sum(np.multiply(section, self.filters[f][layer])) + self.bias[f] #use the proper filter for each one
                     #print(i)
                     #sys.stdout.flush()
 
@@ -162,23 +162,24 @@ class FullyConnectedLayer():
     cache = np.array([0])  #Used to store the values for back-propagation
     weights = np.array([0])  #Weights for each connection between neurons represented as a matrix
 
-    def __init__(self, input_height, input_width, new_dim):
+    def __init__(self, input_depth, input_height, input_width, new_dim):
         #rows = hidden layer size
         #cols = number of unique classifications - size of input vector
 
         self.old_height = input_height
         self.old_width = input_width
 
-        self.rows = input_height * input_width
+        self.rows = input_height * input_width * input_depth
         self.cols = new_dim
+        #self.depth = input_depth
 
-        self.cache = np.zeros((rows,1))
-        self.weights = np.random.uniform(-np.sqrt(1./cols), np.sqrt(1./cols), (rows, cols+1))
+        self.cache = np.zeros((self.rows,1))
+        self.weights = np.random.uniform(-np.sqrt(1./self.cols), np.sqrt(1./self.cols), (self.rows, self.cols+1))
 
         self.mem_weights = np.zeros(self.weights.shape)
     def forward(self, inputArr):
         flatArr = np.ndarray.flatten(inputArr)
-
+        print(np.shape(inputArr), self.rows)
 
         self.cache = np.resize(np.append(flatArr, [1]), (len(flatArr) + 1, 1))
         self.mem_weights = 0.9*self.mem_weights + 0.1*(self.weights ** 2) #incrementing for adagrad
@@ -192,23 +193,27 @@ class FullyConnectedLayer():
 
 possible_classifications = 2
 
-layers = [ConvolutionalLayer(16,16,1,2,3,2,0), ReLULayer(), FullyConnectedLayer(7,7,9), ml.InnerLayer(10,possible_classifications), ml.SoftmaxLayer()]
+layers = [ConvolutionalLayer(16,16,1,2,3,2,0), ReLULayer(), FullyConnectedLayer(2,7,7,9), ml.InnerLayer(10,possible_classifications), ml.SoftmaxLayer()]
 
 
-for(i in range(EPOCHS)):
+for i in range(EPOCHS):
     #psuedocode
-    temp = data
+    temp = np.zeros((16,16,1))
 
-    for(layer in layers):
+    for layer in layers:
         temp = layer.forward(temp)
+
+    expected = np.zeros((2,1))
 
     loss = expected - temp
     temp = expected
 
-    for(layer in layer.reversed())
+    layers.reverse()
+
+    for layer in layers:
         temp = layer.backward(temp)
 
-
+    layers.reverse()
 
 
 
