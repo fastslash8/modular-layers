@@ -15,8 +15,12 @@ class ReLULayer():
     def backward(self, gradient):
         return np.multiply(np.sign(self.cache), gradient)
 
-arr = np.array([[1,2,3],[-1,-2,-3],[-1,1,-1]])
+arr = np.array([[[1,2,3],[-1,-2,-3],[-1,1,-1]], [[2,4,5],[8,8,8],[9,1,10]]])
 
-l = ReLULayer()
 
-print(l.forward(arr))
+
+print(arr, np.ndarray.flatten(arr))
+
+print(np.reshape(np.ndarray.flatten(arr), (2,3,3)))
+
+print(np.mean(np.array([[1,2,3],[1,2,3]])))

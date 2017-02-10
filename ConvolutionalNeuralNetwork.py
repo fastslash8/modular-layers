@@ -10,10 +10,12 @@ import mlayers as ml
 
 #import mnist.py
 
+#FIX THIS --- Filter back-propagation results in numbers too large; the np.exp in the softmax layer cannot be computed for such large numbers
+
 from scipy import misc, ndimage
 
 EPOCHS = 200000
-LEARN_RATE = 0.00001
+LEARN_RATE = 0.001
 ml.LEARN_RATE = 0.001
 
 class ConvolutionalLayer():
@@ -55,6 +57,7 @@ class ConvolutionalLayer():
 
         for f in range(self.filter_num):
             for layer in range(self.depth):
+                print("filter\n",self.filters[f][layer])
                 for i in range(self.o_height):
                     for j in range(self.o_width):
                         #section = input section (x_ij)
@@ -93,7 +96,7 @@ class ConvolutionalLayer():
 
                                 #Rotating filter for convolution
                                 dCdx[m][n][layer] += self.filters[f][layer][-i][-j] * gradient[f][m][n]
-                if(f < 0):
+                if(f == 0):
                     print("gradient", gradient)
                     print("dCdf", dCdf)
                 self.filters[f][layer] -= LEARN_RATE * dCdf
@@ -162,7 +165,24 @@ class ReLULayer():
         return self.cache
 
     def backward(self, gradient):
+        #print(np.multiply(np.sign(self.cache), gradient))
         return np.multiply(np.sign(self.cache), gradient)
+
+
+class LeakyReLULayer():
+
+    def __init__(self):
+        print("kek")
+        #self.cache
+
+    def forward(self, inputArr):
+        self.cache = np.maximum(inputArr, 0.1*inputArr)
+        return self.cache
+
+    def backward(self, gradient):
+        #print(np.multiply(np.sign(self.cache), gradient))
+        return np.multiply(np.sign(self.cache), gradient)
+
 
 
 class FullyConnectedLayer():
@@ -186,7 +206,7 @@ class FullyConnectedLayer():
         self.mem_weights = np.zeros(self.weights.shape)
     def forward(self, inputArr):
         flatArr = np.ndarray.flatten(inputArr)
-        #print(np.shape(inputArr), self.rows)
+        print(np.shape(inputArr), self.depth)
 
         self.cache = np.resize(np.append(flatArr, [1]), (len(flatArr) + 1, 1))
         self.mem_weights = 0.9*self.mem_weights + 0.1*(self.weights ** 2) #incrementing for adagrad
@@ -206,7 +226,7 @@ training_data = []
 
 index = 0
 
-for root, dirnames, filenames in os.walk("sprites"):
+for root, dirnames, filenames in os.walk("training_data"):
     for filename in filenames:
         filepath = os.path.join(root, filename)
         image = ndimage.imread(filepath, mode="RGB")
@@ -215,7 +235,7 @@ for root, dirnames, filenames in os.walk("sprites"):
 
 possible_classifications = len(training_data)
 #layers = [ConvolutionalLayer(64,64,3,3,7,2,0), ReLULayer(), ConvolutionalLayer(58,58,3,3,5,1,0), ReLULayer(), FullyConnectedLayer(2,7,7,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
-layers = [ConvolutionalLayer(16,16,3,6,3,1,0), ReLULayer(), FullyConnectedLayer(6,14,14,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
+layers = [ConvolutionalLayer(16,16,3,6,3,1,0), LeakyReLULayer(), FullyConnectedLayer(6,14,14,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
 
 for i in range(EPOCHS):
     #psuedocode
@@ -228,8 +248,9 @@ for i in range(EPOCHS):
     for layer in layers:
         #print(temp, "\n")
         temp = layer.forward(temp)
+        #print(layer, np.mean(temp))
 
-    loss = temp - expected
+    loss = np.subtract(temp, expected)
 
     #print(np.argmax(expected), np.argmax(temp))
     if(i%50 == 0):
@@ -240,6 +261,7 @@ for i in range(EPOCHS):
     layers.reverse()
 
     for layer in layers:
+        #print(layer, temp)
         temp = layer.backward(temp)
 
     layers.reverse()
