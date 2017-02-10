@@ -1,7 +1,22 @@
 from scipy import misc
 import numpy as np
+import sys
 
-arr = np.array([[1,2,3],[4,5,6]], [[11,22,33], [44,55,66]])
+class ReLULayer():
 
-arr = np.reshape(np.ndarray.flatten(arr), (2,4,3))
-print(arr)
+    def __init__(self):
+        print("kek")
+        #self.cache
+
+    def forward(self, inputArr):
+        self.cache = np.maximum(inputArr, 0)
+        return self.cache
+
+    def backward(self, gradient):
+        return np.multiply(np.sign(self.cache), gradient)
+
+arr = np.array([[1,2,3],[-1,-2,-3],[-1,1,-1]])
+
+l = ReLULayer()
+
+print(l.forward(arr))

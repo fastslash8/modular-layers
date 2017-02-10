@@ -3,15 +3,18 @@ import math
 import numpy.random as random
 import matplotlib.pyplot as plt
 import sys
+import os
+import random as rand
 
 import mlayers as ml
 
 #import mnist.py
 
-from scipy import misc
+from scipy import misc, ndimage
 
-EPOCHS = 10
-LEARN_RATE = 0.001
+EPOCHS = 200000
+LEARN_RATE = 0.00001
+ml.LEARN_RATE = 0.001
 
 class ConvolutionalLayer():
     cache = np.array([0])  #Used to store the values for back-propagation
@@ -31,7 +34,7 @@ class ConvolutionalLayer():
         self.stride = stride
         self.zero_padding = zero_padding
 
-        self.filters = [[np.random.uniform(-1, 1, (self.fsize,self.fsize)) for layer in range(self.depth)] for filter_col in range(self.filter_num)]
+        self.filters = [[np.random.uniform(-math.sqrt(2/(self.height * self.width)), math.sqrt(2/(self.height * self.width)), (self.fsize,self.fsize)) for layer in range(self.depth)] for filter_col in range(self.filter_num)]
         self.bias = np.random.uniform(0, 1, self.filter_num)
         #self.cache = np.zeros((rows,1))
         #self.weights = np.random.uniform(-np.sqrt(1./cols), np.sqrt(1./cols), (rows, cols+1))
@@ -67,7 +70,6 @@ class ConvolutionalLayer():
                         output[f][i][j] += np.sum(np.multiply(section, self.filters[f][layer])) + self.bias[f] #use the proper filter for each one
                     #print(i)
                     #sys.stdout.flush()
-
         return output
 
 
@@ -86,15 +88,15 @@ class ConvolutionalLayer():
                         #iteration TODO
                         for m in range(self.o_height):
                             for n in range(self.o_width):
-                                print(i,j,m,n)
-                                print(np.shape(gradient))
                                 dCdf[i][j] += self.cache[i + m*self.stride][j + n*self.stride][layer] * gradient[f][m][n]
                                 self.bias[f] += gradient[f][m][n]
 
                                 #Rotating filter for convolution
                                 dCdx[m][n][layer] += self.filters[f][layer][-i][-j] * gradient[f][m][n]
-
-                self.filters[f][layer] += dCdf
+                if(f < 0):
+                    print("gradient", gradient)
+                    print("dCdf", dCdf)
+                self.filters[f][layer] -= LEARN_RATE * dCdf
 
 
 
@@ -196,21 +198,43 @@ class FullyConnectedLayer():
 
         return np.reshape(np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1], (self.depth, self.old_height, self.old_width))
 
-possible_classifications = 2
 
-layers = [ConvolutionalLayer(16,16,1,2,3,2,0), ReLULayer(), FullyConnectedLayer(2,7,7,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
 
+
+
+training_data = []
+
+index = 0
+
+for root, dirnames, filenames in os.walk("sprites"):
+    for filename in filenames:
+        filepath = os.path.join(root, filename)
+        image = ndimage.imread(filepath, mode="RGB")
+        training_data.append((index, image))
+        index += 1
+
+possible_classifications = len(training_data)
+#layers = [ConvolutionalLayer(64,64,3,3,7,2,0), ReLULayer(), ConvolutionalLayer(58,58,3,3,5,1,0), ReLULayer(), FullyConnectedLayer(2,7,7,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
+layers = [ConvolutionalLayer(16,16,3,6,3,1,0), ReLULayer(), FullyConnectedLayer(6,14,14,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
 
 for i in range(EPOCHS):
     #psuedocode
-    temp = np.zeros((16,16,1))
+    sample = rand.choice(training_data)
+    temp = sample[1]
+
+    expected = np.zeros((possible_classifications, 1))
+    expected[sample[0]] = 1
 
     for layer in layers:
+        #print(temp, "\n")
         temp = layer.forward(temp)
 
-    expected = np.zeros((2,1))
+    loss = temp - expected
 
-    loss = expected - temp
+    #print(np.argmax(expected), np.argmax(temp))
+    if(i%50 == 0):
+        print(i, temp.T, expected.T)
+
     temp = expected
 
     layers.reverse()
