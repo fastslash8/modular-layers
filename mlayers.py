@@ -255,7 +255,7 @@ class SigmoidLayer():
     def backward(self, gradient):
         #Returning the sigmoid prime of the input from the forward pass (equal to sigmoid() * (1-sigmoid())) times the gradient
 
-        gradient = (self.cache * (1 - self.cache)).transpose() * gradient
+        gradient = (self.cache * (1 - self.cache)) * gradient
         return gradient
 
 class CrossEntropyLossLayer():

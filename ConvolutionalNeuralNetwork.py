@@ -97,7 +97,7 @@ class ConvolutionalLayer():
                                 #Rotating filter for convolution
                                 dCdx[m][n][layer] += self.filters[f][layer][-i][-j] * gradient[f][m][n]
                 if(f == 0):
-                    print("gradient", gradient)
+                    #print("gradient", gradient)
                     print("dCdf", dCdf)
                 self.filters[f][layer] -= LEARN_RATE * dCdf
 
@@ -214,7 +214,7 @@ class FullyConnectedLayer():
         return np.dot(self.weights, self.cache)
 
     def backward(self, gradient):
-        self.weights -= np.outer(gradient, self.cache.T) * LEARN_RATE / np.sqrt(self.mem_weights + 1e-8)
+        self.weights -= np.outer(gradient, self.cache.T) * LEARN_RATE #/ np.sqrt(self.mem_weights + 1e-8)
 
         return np.reshape(np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1], (self.depth, self.old_height, self.old_width))
 
@@ -250,6 +250,8 @@ for i in range(EPOCHS):
         temp = layer.forward(temp)
         #print(layer, np.mean(temp))
 
+    print(np.mean(layers[2].weights), np.mean(layers[3].weights))
+
     loss = np.subtract(temp, expected)
 
     #print(np.argmax(expected), np.argmax(temp))
@@ -261,7 +263,8 @@ for i in range(EPOCHS):
     layers.reverse()
 
     for layer in layers:
-        #print(layer, temp)
+        #print(layer, np.mean(temp))
+        #print(temp)
         temp = layer.backward(temp)
 
     layers.reverse()
