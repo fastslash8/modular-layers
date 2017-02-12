@@ -115,6 +115,7 @@ class TanhLayer():
 class SoftmaxLayer():
     def forward(self, inputArr):
         #print(inputArr)
+        #temp = inputArr - np.max(inputArr)
         self.cache = np.exp(inputArr)/np.sum(np.exp(inputArr))
         return self.cache.copy()
 

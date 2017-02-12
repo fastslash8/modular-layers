@@ -15,8 +15,11 @@ import mlayers as ml
 from scipy import misc, ndimage
 
 EPOCHS = 200000
-LEARN_RATE = 0.001
+LEARN_RATE = 0.01
 ml.LEARN_RATE = 0.001
+GRADIENT_THRESHOLD = 1
+
+debug_mode = False
 
 class ConvolutionalLayer():
     cache = np.array([0])  #Used to store the values for back-propagation
@@ -36,7 +39,7 @@ class ConvolutionalLayer():
         self.stride = stride
         self.zero_padding = zero_padding
 
-        self.filters = [[np.random.uniform(-math.sqrt(2/(self.height * self.width)), math.sqrt(2/(self.height * self.width)), (self.fsize,self.fsize)) for layer in range(self.depth)] for filter_col in range(self.filter_num)]
+        self.filters = [[np.random.uniform(0, math.sqrt(2/(self.height * self.width)), (self.fsize,self.fsize)) for layer in range(self.depth)] for filter_col in range(self.filter_num)]
         self.bias = np.random.uniform(0, 1, self.filter_num)
         #self.cache = np.zeros((rows,1))
         #self.weights = np.random.uniform(-np.sqrt(1./cols), np.sqrt(1./cols), (rows, cols+1))
@@ -55,9 +58,13 @@ class ConvolutionalLayer():
 
         output = np.zeros((self.filter_num, self.o_height, self.o_width))
 
+
         for f in range(self.filter_num):
             for layer in range(self.depth):
-                print("filter\n",self.filters[f][layer])
+                if(debug_mode):
+                    print("filter\n",self.filters[f][layer])
+                    print("bias\n", self.bias[f])
+
                 for i in range(self.o_height):
                     for j in range(self.o_width):
                         #section = input section (x_ij)
@@ -81,6 +88,12 @@ class ConvolutionalLayer():
     def backward(self, gradient):
         dCdx = np.zeros((self.o_height, self.o_width, self.depth))
 
+        """
+        #Gradient Clipping
+        if(np.abs(np.linalg.norm(gradient)) > GRADIENT_THRESHOLD):
+            gradient = GRADIENT_THRESHOLD * gradient / np.linalg.norm(gradient)
+        """
+
         for f in range(self.filter_num):
             for layer in range(self.depth):
                 dCdf = np.zeros((self.fsize, self.fsize))
@@ -92,13 +105,13 @@ class ConvolutionalLayer():
                         for m in range(self.o_height):
                             for n in range(self.o_width):
                                 dCdf[i][j] += self.cache[i + m*self.stride][j + n*self.stride][layer] * gradient[f][m][n]
-                                self.bias[f] += gradient[f][m][n]
+                                self.bias[f] -= LEARN_RATE * gradient[f][m][n]
 
                                 #Rotating filter for convolution
                                 dCdx[m][n][layer] += self.filters[f][layer][-i][-j] * gradient[f][m][n]
-                if(f == 0):
-                    #print("gradient", gradient)
-                    print("dCdf", dCdf)
+                if(f == 0 and debug_mode):
+                    print("gradient", np.mean(gradient))
+                    print("dCdf\n", dCdf)
                 self.filters[f][layer] -= LEARN_RATE * dCdf
 
 
@@ -206,7 +219,6 @@ class FullyConnectedLayer():
         self.mem_weights = np.zeros(self.weights.shape)
     def forward(self, inputArr):
         flatArr = np.ndarray.flatten(inputArr)
-        print(np.shape(inputArr), self.depth)
 
         self.cache = np.resize(np.append(flatArr, [1]), (len(flatArr) + 1, 1))
         self.mem_weights = 0.9*self.mem_weights + 0.1*(self.weights ** 2) #incrementing for adagrad
@@ -214,12 +226,20 @@ class FullyConnectedLayer():
         return np.dot(self.weights, self.cache)
 
     def backward(self, gradient):
-        self.weights -= np.outer(gradient, self.cache.T) * LEARN_RATE #/ np.sqrt(self.mem_weights + 1e-8)
+
+        self.weights -= np.outer(gradient, self.cache.T) * LEARN_RATE / np.sqrt(self.mem_weights + 1e-8)
 
         return np.reshape(np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1], (self.depth, self.old_height, self.old_width))
 
 
 
+def subsample_layer(array, layer):
+    newArray = np.zeros((len(array), len(array[0]),1))
+    for i in range(len(array)):
+        for j in range(len(array[0])):
+            newArray[i][j][0] = array[i][j][layer]
+
+    return newArray
 
 
 training_data = []
@@ -235,27 +255,29 @@ for root, dirnames, filenames in os.walk("training_data"):
 
 possible_classifications = len(training_data)
 #layers = [ConvolutionalLayer(64,64,3,3,7,2,0), ReLULayer(), ConvolutionalLayer(58,58,3,3,5,1,0), ReLULayer(), FullyConnectedLayer(2,7,7,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
-layers = [ConvolutionalLayer(16,16,3,6,3,1,0), LeakyReLULayer(), FullyConnectedLayer(6,14,14,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
+layers = [ConvolutionalLayer(16,16,1,10,3,1,0), LeakyReLULayer(), FullyConnectedLayer(10,14,14,100), ml.SigmoidLayer(), ml.InnerLayer(possible_classifications, 100), ml.SoftmaxLayer()]
 
 for i in range(EPOCHS):
-    #psuedocode
     sample = rand.choice(training_data)
-    temp = sample[1]
+    #print(sample[1].shape)
+    temp = np.divide(sample[1],255)
+    temp = subsample_layer(temp, 0)
+    #print(temp.shape)
 
     expected = np.zeros((possible_classifications, 1))
     expected[sample[0]] = 1
 
     for layer in layers:
-        #print(temp, "\n")
         temp = layer.forward(temp)
-        #print(layer, np.mean(temp))
+        if(debug_mode):
+            print("forward pass", layer, np.mean(temp))
 
-    print(np.mean(layers[2].weights), np.mean(layers[3].weights))
+    #print("average value of weights", np.mean(layers[2].weights), np.mean(layers[3].weights))
 
     loss = np.subtract(temp, expected)
 
     #print(np.argmax(expected), np.argmax(temp))
-    if(i%50 == 0):
+    if(i%5 == 0):
         print(i, temp.T, expected.T)
 
     temp = expected
@@ -263,9 +285,9 @@ for i in range(EPOCHS):
     layers.reverse()
 
     for layer in layers:
-        #print(layer, np.mean(temp))
-        #print(temp)
         temp = layer.backward(temp)
+        if(debug_mode):
+            print("backprop", layer, np.mean(temp))
 
     layers.reverse()
 
