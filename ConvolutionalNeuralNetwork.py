@@ -19,7 +19,7 @@ LEARN_RATE = 0.01
 ml.LEARN_RATE = 0.001
 GRADIENT_THRESHOLD = 1
 
-debug_mode = False
+debug_mode = True
 
 class ConvolutionalLayer():
     cache = np.array([0])  #Used to store the values for back-propagation
@@ -110,7 +110,7 @@ class ConvolutionalLayer():
                                 #Rotating filter for convolution
                                 dCdx[m][n][layer] += self.filters[f][layer][-i][-j] * gradient[f][m][n]
                 if(f == 0 and debug_mode):
-                    print("gradient", np.mean(gradient))
+                    #print("gradient\n", np.mean(gradient))
                     print("dCdf\n", dCdf)
                 self.filters[f][layer] -= LEARN_RATE * dCdf
 
@@ -128,41 +128,44 @@ class MaxPoolingLayer():
         self.averageValues = averageValues
 
     def forward(self, inputArr):
-        self.new_height = int(len(inputArr) / chunk_height)
-        self.new_width = int(len(inputArr) / chunk_width)
-        self.overhang_h = len(inputArr) % chunk_height
-        self.overhang_w = len(inputArr) % chunk_width
+        self.new_height = int(len(inputArr[0]) / self.chunk_height)
+        self.new_width = int(len(inputArr[0][0]) / self.chunk_width)
+        self.overhang_h = len(inputArr[0]) % self.chunk_height
+        self.overhang_w = len(inputArr[0][0]) % self.chunk_width
+
+        #print(self.new_height, self.new_width, self.overhang_h, self.overhang_w)
 
         self.depth = len(inputArr)
 
-        pooled_arr = np.zeros((self.depth, new_height + np.sign(overhang_h), new_width + np.sign(overhang_w)))
+        pooled_arr = np.zeros((self.depth, self.new_height + np.sign(self.overhang_h), self.new_width + np.sign(self.overhang_w)))
 
-        self.max_positions = [[np.zeros(2) for x in range(new_width + np.sign(overhang_w))] for y in range(new_height + np.sign(overhang_h))]
+        self.max_positions = [[[np.zeros(2) for x in range(self.new_width + np.sign(self.overhang_w))] for y in range(self.new_height + np.sign(self.overhang_h))] for layer in range(self.depth)]
 
         for layer in range(self.depth):
-            for i in range(new_height + np.sign(overhang_h)):
-                for j in range(new_width + np.sign(overhang_w)):
+            for i in range(self.new_height + np.sign(self.overhang_h)):
+                for j in range(self.new_width + np.sign(self.overhang_w)):
                     max_value = 0
                     max_x = 0
                     max_y = 0
-                    for m in range(chunk_height if (i < new_height) else overhang_h):
-                        for n in range(chunk_width if (j < new_width) else overhang_w):
-                            if(inputArr[layer][i*chunk_height + m][j*chunk_width + n] > max_value):
-                                max_value = inputArr[layer][i*chunk_height + m][j*chunk_width + n]
-                                max_x = j*chunk_width + n
-                                max_y = i*chunk_height + m
+                    for m in range(self.chunk_height if (i < self.new_height) else self.overhang_h):
+                        for n in range(self.chunk_width if (j < self.new_width) else self.overhang_w):
+                            #print("point\n", max_value, layer, i*self.chunk_height + m, j*self.chunk_width + n)
+                            if(inputArr[layer][i*self.chunk_height + m][j*self.chunk_width + n] > max_value):
+                                max_value = inputArr[layer][i*self.chunk_height + m][j*self.chunk_width + n]
+                                max_x = j*self.chunk_width + n
+                                max_y = i*self.chunk_height + m
                     pooled_arr[layer][i][j] = max_value
-                    max_positions[i][j] = np.array([max_x, max_y])
+                    self.max_positions[layer][i][j] = np.array([max_x, max_y])
         return pooled_arr
 
     def backward(self, gradient):
         dCdP = np.zeros((self.depth, self.new_height * self.chunk_height + self.overhang_h, self.new_width * self.chunk_width + self.overhang_w))
-
         for layer in range(self.depth):
-            for i in range(self.new_height):
-                for j in range(self.new_width):
+            for i in range(self.new_height + np.sign(self.overhang_h)):
+                for j in range(self.new_width + np.sign(self.overhang_w)):
                     #Searching for max value position from input to distribute the error to
-                    dCdP[layer][self.max_positions[i][j][0]][self.max_positions[i][j][1]] = gradient[layer][i][j]
+                    #print(layer, self.max_positions[i][j][1], self.max_positions[i][j][0])
+                    dCdP[layer][self.max_positions[layer][i][j][1]][self.max_positions[layer][i][j][0]] = gradient[layer][i][j]
 
         return dCdP
 
@@ -246,7 +249,7 @@ training_data = []
 
 index = 0
 
-for root, dirnames, filenames in os.walk("training_data"):
+for root, dirnames, filenames in os.walk("pixels"):
     for filename in filenames:
         filepath = os.path.join(root, filename)
         image = ndimage.imread(filepath, mode="RGB")
@@ -255,7 +258,14 @@ for root, dirnames, filenames in os.walk("training_data"):
 
 possible_classifications = len(training_data)
 #layers = [ConvolutionalLayer(64,64,3,3,7,2,0), ReLULayer(), ConvolutionalLayer(58,58,3,3,5,1,0), ReLULayer(), FullyConnectedLayer(2,7,7,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
-layers = [ConvolutionalLayer(16,16,1,10,3,1,0), LeakyReLULayer(), FullyConnectedLayer(10,14,14,100), ml.SigmoidLayer(), ml.InnerLayer(possible_classifications, 100), ml.SoftmaxLayer()]
+layers = [ConvolutionalLayer(32,32,1,5,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), FullyConnectedLayer(5,14,14,30), ReLULayer(), ml.InnerLayer(possible_classifications, 30), ml.SoftmaxLayer()]
+
+
+
+
+
+
+
 
 for i in range(EPOCHS):
     sample = rand.choice(training_data)
@@ -277,7 +287,7 @@ for i in range(EPOCHS):
     loss = np.subtract(temp, expected)
 
     #print(np.argmax(expected), np.argmax(temp))
-    if(i%5 == 0):
+    if(i%1 == 0):
         print(i, temp.T, expected.T)
 
     temp = expected
@@ -287,7 +297,7 @@ for i in range(EPOCHS):
     for layer in layers:
         temp = layer.backward(temp)
         if(debug_mode):
-            print("backprop", layer, np.mean(temp))
+            print("backprop", layer, np.linalg.norm(temp))#, "\n", temp)
 
     layers.reverse()
 
