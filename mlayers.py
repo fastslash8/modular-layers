@@ -91,6 +91,12 @@ class InnerLayer():
         return np.dot(self.weights, self.cache)
 
     def backward(self, gradient):
+        GRADIENT_THRESHOLD = 1
+
+        #Gradient Clipping
+        if(np.abs(np.linalg.norm(gradient)) > GRADIENT_THRESHOLD):
+            gradient = GRADIENT_THRESHOLD * gradient / np.linalg.norm(gradient)
+
         self.weights -= np.outer(gradient, self.cache.T) * LEARN_RATE / np.sqrt(self.mem_weights + 1e-8)
 
         return np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1]

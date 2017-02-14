@@ -14,12 +14,12 @@ import mlayers as ml
 
 from scipy import misc, ndimage
 
-EPOCHS = 200000
-LEARN_RATE = 0.01
+EPOCHS = 20000
+LEARN_RATE = 0.00001
 ml.LEARN_RATE = 0.001
 GRADIENT_THRESHOLD = 1
 
-debug_mode = True
+debug_mode = False
 
 class ConvolutionalLayer():
     cache = np.array([0])  #Used to store the values for back-propagation
@@ -69,8 +69,8 @@ class ConvolutionalLayer():
                     for j in range(self.o_width):
                         #section = input section (x_ij)
                         #section = np.zeros((self.fsize,self.fsize))
+                        section = inputArr[layer, i*self.stride:i*self.stride + self.fsize:1, j*self.stride:j*self.stride + self.fsize:1]
 
-                        section = inputArr[i*self.stride:i*self.stride + self.fsize:1, j*self.stride:j*self.stride + self.fsize:1, layer]
                         """
                         for m in range(self.fsize):
                             for n in range(self.fsize):
@@ -86,7 +86,7 @@ class ConvolutionalLayer():
 
 
     def backward(self, gradient):
-        dCdx = np.zeros((self.o_height, self.o_width, self.depth))
+        dCdx = np.zeros((self.depth, self.height, self.width))
 
         """
         #Gradient Clipping
@@ -104,11 +104,11 @@ class ConvolutionalLayer():
                         #iteration TODO
                         for m in range(self.o_height):
                             for n in range(self.o_width):
-                                dCdf[i][j] += self.cache[i + m*self.stride][j + n*self.stride][layer] * gradient[f][m][n]
+                                dCdf[i][j] += self.cache[layer][i + m*self.stride][j + n*self.stride] * gradient[f][m][n]
                                 self.bias[f] -= LEARN_RATE * gradient[f][m][n]
 
                                 #Rotating filter for convolution
-                                dCdx[m][n][layer] += self.filters[f][layer][-i][-j] * gradient[f][m][n]
+                                dCdx[layer][m*self.stride + i][n*self.stride + j] += self.filters[f][layer][-i][-j] * gradient[f][m][n]
                 if(f == 0 and debug_mode):
                     #print("gradient\n", np.mean(gradient))
                     print("dCdf\n", dCdf)
@@ -164,7 +164,6 @@ class MaxPoolingLayer():
             for i in range(self.new_height + np.sign(self.overhang_h)):
                 for j in range(self.new_width + np.sign(self.overhang_w)):
                     #Searching for max value position from input to distribute the error to
-                    #print(layer, self.max_positions[i][j][1], self.max_positions[i][j][0])
                     dCdP[layer][self.max_positions[layer][i][j][1]][self.max_positions[layer][i][j][0]] = gradient[layer][i][j]
 
         return dCdP
@@ -237,13 +236,21 @@ class FullyConnectedLayer():
 
 
 def subsample_layer(array, layer):
-    newArray = np.zeros((len(array), len(array[0]),1))
+    newArray = np.zeros((1, len(array[0]), len(array[0][0])))
     for i in range(len(array)):
         for j in range(len(array[0])):
-            newArray[i][j][0] = array[i][j][layer]
+            newArray[0][i][j] = array[layer][i][j]
 
     return newArray
 
+def seperate_layers(array):
+    newArray = np.zeros((len(array[0][0]), len(array), len(array[0])))
+    for i in range(len(array)):
+        for j in range(len(array[0])):
+            for k in range(len(array[0][0])):
+                newArray[k][i][j] = array[i][j][k]
+
+    return newArray
 
 training_data = []
 
@@ -252,19 +259,22 @@ index = 0
 for root, dirnames, filenames in os.walk("pixels"):
     for filename in filenames:
         filepath = os.path.join(root, filename)
-        image = ndimage.imread(filepath, mode="RGB")
+        image = seperate_layers(ndimage.imread(filepath, mode="RGB"))
         training_data.append((index, image))
         index += 1
 
 possible_classifications = len(training_data)
+#layers = [ConvolutionalLayer(16,16,1,3,3,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), FullyConnectedLayer(3,7,7,30), LeakyReLULayer(), ml.InnerLayer(possible_classifications, 30), ml.SoftmaxLayer()]
 #layers = [ConvolutionalLayer(64,64,3,3,7,2,0), ReLULayer(), ConvolutionalLayer(58,58,3,3,5,1,0), ReLULayer(), FullyConnectedLayer(2,7,7,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
-layers = [ConvolutionalLayer(32,32,1,5,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), FullyConnectedLayer(5,14,14,30), ReLULayer(), ml.InnerLayer(possible_classifications, 30), ml.SoftmaxLayer()]
+layers = [ConvolutionalLayer(32,32,1,5,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), ConvolutionalLayer(14,14,5,10,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), FullyConnectedLayer(10,5,5,20), LeakyReLULayer(), ml.InnerLayer(possible_classifications, 20), ml.SoftmaxLayer()]
 
 
 
 
 
 
+
+error = np.zeros((0,2))
 
 
 for i in range(EPOCHS):
@@ -272,7 +282,6 @@ for i in range(EPOCHS):
     #print(sample[1].shape)
     temp = np.divide(sample[1],255)
     temp = subsample_layer(temp, 0)
-    #print(temp.shape)
 
     expected = np.zeros((possible_classifications, 1))
     expected[sample[0]] = 1
@@ -280,7 +289,7 @@ for i in range(EPOCHS):
     for layer in layers:
         temp = layer.forward(temp)
         if(debug_mode):
-            print("forward pass", layer, np.mean(temp))
+            print("forward pass", layer, np.mean(temp), temp.shape)
 
     #print("average value of weights", np.mean(layers[2].weights), np.mean(layers[3].weights))
 
@@ -297,20 +306,19 @@ for i in range(EPOCHS):
     for layer in layers:
         temp = layer.backward(temp)
         if(debug_mode):
-            print("backprop", layer, np.linalg.norm(temp))#, "\n", temp)
+            print("backprop", layer, np.linalg.norm(temp), temp.shape)#, "\n", temp)
 
     layers.reverse()
 
+    error = np.append(error, np.absolute(np.array([[i, np.sum(np.abs(loss))]])), axis=0)
 
 
-"""
-test_layer = ConvolutionalLayer(820,500,3,2,10,1,0);
-img = misc.imread("boi.png")
+plt.plot(error[:,0], error[:,1])
+plt.xlabel("Iteration")
+plt.ylabel("Error")
 
-new_imgs = test_layer.forward(img)
-
-print(new_imgs)
-
-plt.imshow(new_imgs[0], interpolation='nearest')
 plt.show()
-"""
+
+for fil_layer in layers[0].filters:
+    for fil in fil_layer:
+        plt.imshow(fil)
