@@ -2,7 +2,12 @@ from scipy import misc
 import numpy as np
 import sys
 import math
+import random as rand
 
-test = np.array([[1,2,3,4],[5,6,7,8]])
 
-print(int(1))
+zika = []
+
+zika.append("hello")
+zika.append("goodbye")
+
+print([rand.choice(zika) for i in range(10)])

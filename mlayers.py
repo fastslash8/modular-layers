@@ -101,6 +101,53 @@ class InnerLayer():
 
         return np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1]
 
+class InnerLayerRevised():
+    cache = np.array([0])  #Used to store the values for back-propagation
+    weights = np.array([0])  #Weights for each connection between neurons represented as a matrix
+
+    def __init__(self, rows, cols):
+        #rows = hidden layer size
+        #cols = number of unique classifications - size of input vector
+
+        self.cache = np.zeros((rows,1))
+        self.weights = np.random.uniform(-np.sqrt(1./cols), np.sqrt(1./cols), (rows, cols+1))
+
+        self.mem_weights = np.zeros(self.weights.shape)
+    def forward(self, inputData):
+        self.cache = []
+        outputs = []
+
+        for data in inputData:
+            augmented_data = np.resize(np.append(data, [1]), (len(data) + 1, 1))
+            self.cache.append(augmented_data)
+            self.mem_weights = 0.9*self.mem_weights + 0.1*(self.weights ** 2) #incrementing for adagrad
+
+            outputs.append(np.dot(self.weights, augmented_data))
+
+        return outputs
+
+
+    def backward(self, gradients):
+        """
+        GRADIENT_THRESHOLD = 1
+
+        #Gradient Clipping
+        if(np.abs(np.linalg.norm(gradient)) > GRADIENT_THRESHOLD):
+            gradient = GRADIENT_THRESHOLD * gradient / np.linalg.norm(gradient)
+        """
+        dCdw = np.zeros(self.weights.shape)
+        dCdz = []
+
+        for grad in range(len(gradients)):
+            gradient = gradients[grad]
+            dCdw += np.outer(gradient, self.cache[grad].T) / np.sqrt(self.mem_weights + 1e-8)
+
+            dCdz.append(np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1])
+
+        self.weights -= LEARN_RATE * dCdw
+
+        return dCdz
+
 
 class TanhLayer():
     cache = np.array([0])  #Used to store the values for back-propagation
@@ -119,14 +166,24 @@ class TanhLayer():
         return 1/(1 + np.exp(-1 * inputArr))
 
 class SoftmaxLayer():
-    def forward(self, inputArr):
+    def forward(self, inputData):
         #print(inputArr)
         #temp = inputArr - np.max(inputArr)
-        self.cache = np.exp(inputArr)/np.sum(np.exp(inputArr))
-        return self.cache.copy()
+        outputs = []
 
-    def backward(self, expectedValue):
-        self.loss = np.subtract(self.cache, expectedValue)
+        for data in inputData:
+            data_adjusted = data - np.max(data)
+            outputs.append(np.exp(data_adjusted)/np.sum(np.exp(data_adjusted)))
+
+        self.cache = outputs[:]
+        return outputs
+
+    def backward(self, expectedValues):
+        self.loss = []
+
+        for e in range(len(expectedValues)):
+            self.loss.append(np.subtract(self.cache[e], expectedValues[e]))
+
         return self.loss
 
     def clear_loss(self):

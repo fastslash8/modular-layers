@@ -256,7 +256,7 @@ training_data = []
 
 index = 0
 
-for root, dirnames, filenames in os.walk("pixels"):
+for root, dirnames, filenames in os.walk("training_data"):
     for filename in filenames:
         filepath = os.path.join(root, filename)
         image = seperate_layers(ndimage.imread(filepath, mode="RGB"))
@@ -264,9 +264,10 @@ for root, dirnames, filenames in os.walk("pixels"):
         index += 1
 
 possible_classifications = len(training_data)
-#layers = [ConvolutionalLayer(16,16,1,3,3,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), FullyConnectedLayer(3,7,7,30), LeakyReLULayer(), ml.InnerLayer(possible_classifications, 30), ml.SoftmaxLayer()]
+
+layers = [ConvolutionalLayer(16,16,1,10,3,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), FullyConnectedLayer(10,7,7,30), LeakyReLULayer(), ml.InnerLayer(possible_classifications, 30), ml.SoftmaxLayer()]
 #layers = [ConvolutionalLayer(64,64,3,3,7,2,0), ReLULayer(), ConvolutionalLayer(58,58,3,3,5,1,0), ReLULayer(), FullyConnectedLayer(2,7,7,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
-layers = [ConvolutionalLayer(32,32,1,5,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), ConvolutionalLayer(14,14,5,10,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), FullyConnectedLayer(10,5,5,20), LeakyReLULayer(), ml.InnerLayer(possible_classifications, 20), ml.SoftmaxLayer()]
+#layers = [ConvolutionalLayer(32,32,1,5,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), ConvolutionalLayer(14,14,5,10,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), FullyConnectedLayer(10,5,5,20), LeakyReLULayer(), ml.InnerLayer(possible_classifications, 20), ml.SoftmaxLayer()]
 
 
 
