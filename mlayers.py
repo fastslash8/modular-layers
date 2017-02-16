@@ -128,9 +128,9 @@ class InnerLayerRevised():
 
 
     def backward(self, gradients):
-        """
-        GRADIENT_THRESHOLD = 1
 
+        GRADIENT_THRESHOLD = 100
+        """
         #Gradient Clipping
         if(np.abs(np.linalg.norm(gradient)) > GRADIENT_THRESHOLD):
             gradient = GRADIENT_THRESHOLD * gradient / np.linalg.norm(gradient)
@@ -143,6 +143,13 @@ class InnerLayerRevised():
             dCdw += np.outer(gradient, self.cache[grad].T) / np.sqrt(self.mem_weights + 1e-8)
 
             dCdz.append(np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1])
+
+        if(np.abs(np.linalg.norm(dCdw)) > GRADIENT_THRESHOLD):
+            print("gradient of", np.linalg.norm(dCdw), "was clipped")
+            dCdw = GRADIENT_THRESHOLD * dCdw / np.linalg.norm(dCdw)
+
+
+        #print("dCdw\n", dCdw)
 
         self.weights -= LEARN_RATE * dCdw
 

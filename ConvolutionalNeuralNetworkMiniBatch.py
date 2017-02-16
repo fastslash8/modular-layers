@@ -14,12 +14,12 @@ import mlayers as ml
 
 from scipy import misc, ndimage
 
-EPOCHS = 5000
-LEARN_RATE = 0.000001
-ml.LEARN_RATE = 0.0001
-GRADIENT_THRESHOLD = 1
+EPOCHS = 80*32
+LEARN_RATE = 0.1
+ml.LEARN_RATE = 0.001
+GRADIENT_THRESHOLD = 100
 
-minibatch_size = 4
+minibatch_size = 1
 
 debug_mode = False
 
@@ -41,8 +41,8 @@ class ConvolutionalLayer():
         self.stride = stride
         self.zero_padding = zero_padding
 
-        self.filters = [[np.random.uniform(0, math.sqrt(2/(self.height * self.width)), (self.fsize,self.fsize)) for layer in range(self.depth)] for filter_col in range(self.filter_num)]
-        self.bias = np.random.uniform(0, 1, self.filter_num)
+        self.filters = [[np.random.uniform(-math.sqrt(1/(self.height * self.width)), math.sqrt(1/(self.height * self.width)), (self.fsize,self.fsize)) for layer in range(self.depth)] for filter_col in range(self.filter_num)]
+        self.bias = np.random.uniform(-math.sqrt(1/(self.height * self.width)), math.sqrt(1/(self.height * self.width)), self.filter_num)
         #self.cache = np.zeros((rows,1))
         #self.weights = np.random.uniform(-np.sqrt(1./cols), np.sqrt(1./cols), (rows, cols+1))
 
@@ -65,9 +65,9 @@ class ConvolutionalLayer():
 
             for f in range(self.filter_num):
                 for layer in range(self.depth):
-                    if(debug_mode):
-                        print("filter\n",self.filters[f][layer])
-                        print("bias\n", self.bias[f])
+                    #if(debug_mode):
+                        #print("filter\n",self.filters[f][layer])
+                        #print("bias\n", self.bias[f])
 
                     for i in range(self.o_height):
                         for j in range(self.o_width):
@@ -121,16 +121,25 @@ class ConvolutionalLayer():
                                     #Rotating filter for convolution
                                     dCdx[layer][m*self.stride + i][n*self.stride + j] += self.filters[f][layer][-i][-j] * gradient[f][m][n]
 
-                    if(f == 0 and debug_mode):
+                    #if(f == 0 and debug_mode):
                         #print("gradient\n", np.mean(gradient))
-                        print("dCdf\n", dCdf[f][layer])
+                        #print("dCdf\n", dCdf[f][layer])
 
 
             dCdx_list.append(dCdx)#np.dot(dCdx, gradient)
 
         for f in range(self.filter_num):
+            #if(np.abs(np.linalg.norm(dCdb[f])) > GRADIENT_THRESHOLD):
+                #dCdb[f] = GRADIENT_THRESHOLD * dCdb[f] / np.linalg.norm(dCdb[f])
+
             self.bias[f] -= LEARN_RATE * dCdb[f]
             for layer in range(self.depth):
+                if(np.abs(np.linalg.norm(dCdf[f][layer])) > GRADIENT_THRESHOLD):
+                    print("gradient of", np.linalg.norm(dCdf[f][layer]), "was clipped")
+                    #dCdf[f][layer] = GRADIENT_THRESHOLD * dCdf[f][layer] / np.linalg.norm(dCdf[f][layer])
+
+                    #print("dCdf\n", dCdf[f][layer])
+
                 self.filters[f][layer] -= LEARN_RATE * dCdf[f][layer]
 
         return dCdx_list
@@ -308,7 +317,13 @@ class FullyConnectedLayer():
 
             dCdz.append(np.reshape(np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1], (self.depth, self.old_height, self.old_width)))
 
-        self.weights -= LEARN_RATE * dCdw
+        if(np.abs(np.linalg.norm(dCdw)) > GRADIENT_THRESHOLD):
+            print("gradient of", np.linalg.norm(dCdw), "was clipped")
+            dCdw = GRADIENT_THRESHOLD * dCdw / np.linalg.norm(dCdw)
+
+
+        #print("dCdw\n", dCdw)
+        self.weights -= ml.LEARN_RATE * dCdw
 
         return dCdz
 
@@ -335,7 +350,7 @@ training_data = []
 
 index = 0
 
-for root, dirnames, filenames in os.walk("numbers"):
+for root, dirnames, filenames in os.walk("overtraining"):
     for filename in filenames:
         filepath = os.path.join(root, filename)
         image = seperate_layers(ndimage.imread(filepath, mode="RGB"))
@@ -371,7 +386,7 @@ for i in range(EPOCHS):
     for layer in layers:
         temp = layer.forward(temp)
         if(debug_mode):
-            print("forward pass", layer, np.mean(temp), temp.shape)
+            print("forward pass", layer, np.mean(temp[0]), temp[0].shape)
 
     #print("average value of weights", np.mean(layers[2].weights), np.mean(layers[3].weights))
 
@@ -388,11 +403,12 @@ for i in range(EPOCHS):
     for layer in layers:
         temp = layer.backward(temp)
         if(debug_mode):
-            print("backprop", layer, np.linalg.norm(temp), temp.shape)#, "\n", temp)
+            print("backprop", layer, np.linalg.norm(temp[0]), temp[0].shape)#, "\n", temp)
 
     layers.reverse()
 
-    error = np.append(error, np.absolute(np.array([[i, np.sum(np.abs(loss[0]))]])), axis=0)
+    for loss_index in range(len(loss)):
+        error = np.append(error, np.absolute(np.array([[i*minibatch_size + loss_index, np.sum(np.abs(loss[loss_index]))]])), axis=0)
 
 
 plt.plot(error[:,0], error[:,1])
