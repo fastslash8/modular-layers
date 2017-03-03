@@ -54,24 +54,24 @@ error = np.zeros((0,2))
 
 
 for i in range(EPOCHS):
-    samples = [rand.choice(training_data) for sample in range(minibatch_size)]
+    samples = [rand.choice(training_data) for sample in range(ml.minibatch_size)]
     #print(sample[1].shape)
-    temp = [np.divide(samples[index][1],255) for index in range(minibatch_size)]
-    temp = [np.subsample_layer(temp[index], 0) for index in range(minibatch_size)]
+    temp = [np.divide(samples[index][1],255) for index in range(ml.minibatch_size)]
+    temp = [ml.subsample_layer(temp[index], 0) for index in range(ml.minibatch_size)]
 
-    expected = [np.zeros((possible_classifications, 1)) for classification in range(minibatch_size)]
+    expected = [np.zeros((possible_classifications, 1)) for classification in range(ml.minibatch_size)]
 
-    for c in range(minibatch_size):
+    for c in range(ml.minibatch_size):
         expected[c][samples[c][0]] = 1
 
     for layer in layers:
         temp = layer.forward(temp)
-        if(debug_mode):
+        if(ml.debug_mode):
             print("forward pass", layer, np.mean(temp[0]), temp[0].shape)
 
     #print("average value of weights", np.mean(layers[2].weights), np.mean(layers[3].weights))
 
-    loss = [np.subtract(temp[i], expected[i]) for i in range(minibatch_size)]
+    loss = [np.subtract(temp[i], expected[i]) for i in range(ml.minibatch_size)]
 
     #print(np.argmax(expected), np.argmax(temp))
     if(i%1 == 0):
@@ -83,13 +83,13 @@ for i in range(EPOCHS):
 
     for layer in layers:
         temp = layer.backward(temp)
-        if(debug_mode):
+        if(ml.debug_mode):
             print("backprop", layer, np.linalg.norm(temp[0]), temp[0].shape)#, "\n", temp)
 
     layers.reverse()
 
     for loss_index in range(len(loss)):
-        error = np.append(error, np.absolute(np.array([[i*minibatch_size + loss_index, np.sum(np.abs(loss[loss_index]))]])), axis=0)
+        error = np.append(error, np.absolute(np.array([[i*ml.minibatch_size + loss_index, np.sum(np.abs(loss[loss_index]))]])), axis=0)
 
 
 plt.plot(error[:,0], error[:,1])

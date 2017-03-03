@@ -379,6 +379,30 @@ class InnerLayerRevised():
 
         return dCdz
 
+class SoftmaxLayer():
+    def forward(self, inputData):
+        #print(inputArr)
+        #temp = inputArr - np.max(inputArr)
+        outputs = []
+
+        for data in inputData:
+            data_adjusted = data - np.max(data)
+            outputs.append(np.exp(data_adjusted)/np.sum(np.exp(data_adjusted)))
+
+        self.cache = outputs[:]
+        return outputs
+
+    def backward(self, expectedValues):
+        self.loss = []
+
+        for e in range(len(expectedValues)):
+            self.loss.append(np.subtract(self.cache[e], expectedValues[e]))
+
+        return self.loss
+
+    def clear_loss(self):
+        self.loss = np.zeros(self.loss.shape)
+
 
 
 def subsample_layer(array, layer):
