@@ -101,60 +101,6 @@ class InnerLayer():
 
         return np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1]
 
-class InnerLayerRevised():
-    cache = np.array([0])  #Used to store the values for back-propagation
-    weights = np.array([0])  #Weights for each connection between neurons represented as a matrix
-
-    def __init__(self, rows, cols):
-        #rows = hidden layer size
-        #cols = number of unique classifications - size of input vector
-
-        self.cache = np.zeros((rows,1))
-        self.weights = np.random.uniform(-np.sqrt(1./cols), np.sqrt(1./cols), (rows, cols+1))
-
-        self.mem_weights = np.zeros(self.weights.shape)
-    def forward(self, inputData):
-        self.cache = []
-        outputs = []
-
-        for data in inputData:
-            augmented_data = np.resize(np.append(data, [1]), (len(data) + 1, 1))
-            self.cache.append(augmented_data)
-            self.mem_weights = 0.9*self.mem_weights + 0.1*(self.weights ** 2) #incrementing for adagrad
-
-            outputs.append(np.dot(self.weights, augmented_data))
-
-        return outputs
-
-
-    def backward(self, gradients):
-
-        GRADIENT_THRESHOLD = 100
-        """
-        #Gradient Clipping
-        if(np.abs(np.linalg.norm(gradient)) > GRADIENT_THRESHOLD):
-            gradient = GRADIENT_THRESHOLD * gradient / np.linalg.norm(gradient)
-        """
-        dCdw = np.zeros(self.weights.shape)
-        dCdz = []
-
-        for grad in range(len(gradients)):
-            gradient = gradients[grad]
-            dCdw += np.outer(gradient, self.cache[grad].T) / np.sqrt(self.mem_weights + 1e-8)
-
-            dCdz.append(np.dot(self.weights.T, gradient)[:len(np.dot(self.weights.T, gradient)) - 1])
-
-        if(np.abs(np.linalg.norm(dCdw)) > GRADIENT_THRESHOLD):
-            print("gradient of", np.linalg.norm(dCdw), "was clipped")
-            dCdw = GRADIENT_THRESHOLD * dCdw / np.linalg.norm(dCdw)
-
-
-        #print("dCdw\n", dCdw)
-
-        self.weights -= LEARN_RATE * dCdw
-
-        return dCdz
-
 
 class TanhLayer():
     cache = np.array([0])  #Used to store the values for back-propagation
