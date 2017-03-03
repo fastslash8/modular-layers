@@ -14,12 +14,16 @@ import mlayers_minibatch as ml
 
 from scipy import misc, ndimage
 
-EPOCHS = 80*32
-ml.LEARN_RATE = 0.1
-ml.LEARN_RATE_CONV = 0.001
+if(len(sys.argv) < 5):
+    print("Not enough arguments provided.  Try \"python ConvolutionalNeuralNetworkMiniBatch.py \'epochs\' \'minibatch size\' \'filter learn rate\' \'fully connected learn rate\'\"")
+    exit()
+
+EPOCHS = int(sys.argv[1])#80*32
+ml.LEARN_RATE = float(sys.argv[4])#0.1
+ml.LEARN_RATE_CONV = float(sys.argv[3])#0.001
 ml.GRADIENT_THRESHOLD = 100
 
-ml.minibatch_size = 1
+ml.minibatch_size = int(sys.argv[2])#1
 
 ml.debug_mode = False
 

@@ -214,8 +214,7 @@ class MaxPoolingLayer():
 
 class ReLULayer():
 
-    def __init__(self):
-        print("kek")
+    #def __init__(self):
         #self.cache
 
     def forward(self, inputData):
@@ -242,8 +241,7 @@ class ReLULayer():
 
 class LeakyReLULayer():
 
-    def __init__(self):
-        print("kek")
+    #def __init__(self):
         #self.cache
 
     def forward(self, inputData):
