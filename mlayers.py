@@ -2,7 +2,7 @@ import numpy as np
 
 
 LEARN_RATE = 0.001
-
+GRADIENT_THRESHOLD = 1000
 
 class RecurrentInnerLayer():
     cache = np.array([0])  #Used to store the values for back-propagation
@@ -91,8 +91,6 @@ class InnerLayer():
         return np.dot(self.weights, self.cache)
 
     def backward(self, gradient):
-        GRADIENT_THRESHOLD = 1
-
         #Gradient Clipping
         if(np.abs(np.linalg.norm(gradient)) > GRADIENT_THRESHOLD):
             gradient = GRADIENT_THRESHOLD * gradient / np.linalg.norm(gradient)
@@ -129,7 +127,6 @@ class InnerLayerRevised():
 
     def backward(self, gradients):
 
-        GRADIENT_THRESHOLD = 100
         """
         #Gradient Clipping
         if(np.abs(np.linalg.norm(gradient)) > GRADIENT_THRESHOLD):

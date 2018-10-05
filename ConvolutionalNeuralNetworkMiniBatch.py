@@ -14,12 +14,15 @@ import mlayers as ml
 
 from scipy import misc, ndimage
 
-EPOCHS = 80*32
-LEARN_RATE = 0.1
-ml.LEARN_RATE = 0.001
-GRADIENT_THRESHOLD = 100
+EPOCHS = 10000
+minibatch_size = 64
 
-minibatch_size = 1
+LEARN_RATE = 0.01/minibatch_size
+ml.LEARN_RATE = 0.01/minibatch_size
+GRADIENT_THRESHOLD = 1000
+ml.GRADIENT_THRESHOLD = 1000
+
+
 
 debug_mode = False
 
@@ -41,7 +44,7 @@ class ConvolutionalLayer():
         self.stride = stride
         self.zero_padding = zero_padding
 
-        self.filters = [[np.random.uniform(-math.sqrt(1/(self.height * self.width)), math.sqrt(1/(self.height * self.width)), (self.fsize,self.fsize)) for layer in range(self.depth)] for filter_col in range(self.filter_num)]
+        self.filters = [[np.random.uniform(-10*math.sqrt(1/(self.height * self.width)), math.sqrt(10/(self.height * self.width)), (self.fsize,self.fsize)) for layer in range(self.depth)] for filter_col in range(self.filter_num)]
         self.bias = np.random.uniform(-math.sqrt(1/(self.height * self.width)), math.sqrt(1/(self.height * self.width)), self.filter_num)
         #self.cache = np.zeros((rows,1))
         #self.weights = np.random.uniform(-np.sqrt(1./cols), np.sqrt(1./cols), (rows, cols+1))
@@ -52,6 +55,8 @@ class ConvolutionalLayer():
     def forward(self, inputData):
         #filters = list of all filters
         #outputs = list(?) of outputs
+        inputData = [np.pad(arr, ((0,0), (self.zero_padding,self.zero_padding), (self.zero_padding,self.zero_padding)), 'constant', constant_values=0) for arr in inputData]
+
         self.cache = inputData
 
         self.o_width = int((self.width - self.fsize)/self.stride) + 1
@@ -99,12 +104,23 @@ class ConvolutionalLayer():
         for grad in range(len(gradients)):
             dCdx = np.zeros((self.depth, self.height, self.width))
             gradient = gradients[grad]
+
+
+
+        """dCdx_list = []
+        dCdf = [[np.zeros((self.fsize, self.fsize)) for layer in range(self.depth)] for f in range(self.filter_num)]
+        dCdb = np.zeros(self.filter_num)
+
+        for grad in range(len(gradients)):
+            dCdx = np.zeros((self.depth, self.height, self.width))
+            gradient = gradients[grad]
+            """
             """
             #Gradient Clipping
             if(np.abs(np.linalg.norm(gradient)) > GRADIENT_THRESHOLD):
                 gradient = GRADIENT_THRESHOLD * gradient / np.linalg.norm(gradient)
             """
-
+            """
             for f in range(self.filter_num):
                 for layer in range(self.depth):
                     #dCdf = np.zeros((self.fsize, self.fsize))
@@ -142,7 +158,7 @@ class ConvolutionalLayer():
 
                 self.filters[f][layer] -= LEARN_RATE * dCdf[f][layer]
 
-        return dCdx_list
+        return dCdx_list"""
 
 
 
@@ -350,7 +366,7 @@ training_data = []
 
 index = 0
 
-for root, dirnames, filenames in os.walk("overtraining"):
+for root, dirnames, filenames in os.walk("numbers"):
     for filename in filenames:
         filepath = os.path.join(root, filename)
         image = seperate_layers(ndimage.imread(filepath, mode="RGB"))
@@ -360,8 +376,9 @@ for root, dirnames, filenames in os.walk("overtraining"):
 possible_classifications = len(training_data)
 
 #layers = [ConvolutionalLayer(16,16,1,10,3,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), FullyConnectedLayer(10,7,7,30), LeakyReLULayer(), ml.InnerLayerRevised(possible_classifications, 30), ml.SoftmaxLayer()]
+#layers = [ConvolutionalLayer(32,32,1,32,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), FullyConnectedLayer(32,14,14,30), LeakyReLULayer(), ml.InnerLayerRevised(possible_classifications, 30), ml.SoftmaxLayer()]
 #layers = [ConvolutionalLayer(64,64,3,3,7,2,0), ReLULayer(), ConvolutionalLayer(58,58,3,3,5,1,0), ReLULayer(), FullyConnectedLayer(2,7,7,10), ml.InnerLayer(possible_classifications, 10), ml.SoftmaxLayer()]
-layers = [ConvolutionalLayer(32,32,1,6,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), ConvolutionalLayer(14,14,6,16,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), FullyConnectedLayer(16,5,5,20), LeakyReLULayer(), ml.InnerLayerRevised(possible_classifications, 20), ml.SoftmaxLayer()]
+layers = [ConvolutionalLayer(32,32,1,6,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), ConvolutionalLayer(14,14,6,16,5,1,0), LeakyReLULayer(), MaxPoolingLayer(2,2), ConvolutionalLayer(5,5,16,12,5,1,0), LeakyReLULayer(), FullyConnectedLayer(12,1,1,60), LeakyReLULayer(), ml.InnerLayerRevised(possible_classifications, 60), ml.SoftmaxLayer()]
 
 
 

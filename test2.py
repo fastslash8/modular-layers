@@ -5,9 +5,8 @@ import math
 import random as rand
 
 
-zika = []
+array = np.ones((5,2,2))
 
-zika.append("hello")
-zika.append("goodbye")
+newArray = np.pad(array, ((0,0), (0,0), (0,0)), 'constant', constant_values=0)
 
-print([rand.choice(zika) for i in range(10)])
+print(newArray)
